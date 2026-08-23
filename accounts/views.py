@@ -8,6 +8,7 @@ from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
+from django.core.exceptions import PermissionDenied
 
 from .models import UserProfile, StudyRecord
 from .forms import UserProfileForm, StudyRecordForm
@@ -133,6 +134,9 @@ def delete_record_view(request, record_id):
 @login_required
 def edit_record_view(request, record_id):
     record = get_object_or_404(StudyRecord, id=record_id, user=request.user)
+
+    if record.user != request.user:
+        raise PermissionDenied("본인의 공부 기록만 수정할 수 있습니다.")
 
     if request.method == 'POST':
         form = StudyRecordForm(request.POST, instance=record)

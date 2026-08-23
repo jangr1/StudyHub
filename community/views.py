@@ -6,20 +6,29 @@ from django.db.models import Sum, Count
 from accounts.models import StudyRecord
 
 def index_view(request):
-    # 공개 설정(is_public=True)된 학습 기록만 최신순으로 조회
-    public_records = StudyRecord.objects.filter(is_public=True).order_by('-created_at')
+    # ⚡ N+1 최적화: 1:N 관계(user)는 JOIN(select_related), M:N 관계(likes)는 prefetch_related로 일괄 조회
+    records = (
+        StudyRecord.objects.filter(is_public=True)
+        .select_related('user')
+        .prefetch_related('likes')
+        .order_by('-created_at')
+    )
+    
     total_community_likes = StudyRecord.objects.filter(is_public=True).aggregate(total=Count('likes'))['total'] or 0
+
     context = {
-        'records': public_records,
+        'records': records,
         'total_community_likes': total_community_likes,
     }
-    return render(request, 'community/index.html',context)
+    return render(request, 'community/index.html', context)
 
 def home_view(request):
-    # 1. 전체 공개된 기록 중 최신 3개만 미리보기로 추출
-    recent_records = StudyRecord.objects.filter(is_public=True).order_by('-created_at')[:3]
-    
-    # 2. 메인 대시보드 요약 통계 계산
+    # 메인 홈 화면 최신 글 3개 조회 시에도 작성자 JOIN 최적화 적용
+    recent_records = (
+        StudyRecord.objects.filter(is_public=True)
+        .select_related('user')
+        .order_by('-created_at')[:3]
+    )
     total_records_count = StudyRecord.objects.count()
     total_minutes = StudyRecord.objects.aggregate(Sum('duration_minutes'))['duration_minutes__sum'] or 0
     total_hours = round(total_minutes / 60, 1)
@@ -43,5 +52,4 @@ def like_record_view(request, record_id):
     else:
         record.likes.add(request.user)
 
-    # 요청이 들어온 이전 페이지(HTTP_REFERER)로 복귀, 없으면 커뮤니티 홈으로 이동
     return redirect(request.META.get('HTTP_REFERER', 'community:index'))
