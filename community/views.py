@@ -40,7 +40,7 @@ def home_view(request):
         'total_hours': total_hours,
         'active_users_count': active_users_count,
     }
-    return render(request, 'home.html', context)
+    return render(request, 'community/home.html', context)
 
 @login_required
 @require_POST
