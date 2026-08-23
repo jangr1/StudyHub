@@ -53,3 +53,38 @@ def like_record_view(request, record_id):
         record.likes.add(request.user)
 
     return redirect(request.META.get('HTTP_REFERER', 'community:index'))
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from .serializers import StudyRecordSerializer
+
+@api_view(['GET'])
+def api_record_list(request):
+    """
+    공개된 공부 기록 목록을 JSON으로 반환하는 REST API
+    """
+    records = (
+        StudyRecord.objects.filter(is_public=True)
+        .select_related('user')
+        .prefetch_related('likes')
+        .order_by('-created_at')
+    )
+    serializer = StudyRecordSerializer(records, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+def api_stats_summary(request):
+    """
+    플랫폼 전체 집계 데이터를 JSON으로 반환하는 REST API
+    """
+    total_records = StudyRecord.objects.count()
+    total_minutes = StudyRecord.objects.aggregate(Sum('duration_minutes'))['duration_minutes__sum'] or 0
+    total_hours = round(total_minutes / 60, 1)
+    active_users = StudyRecord.objects.values('user').distinct().count()
+
+    return Response({
+        'total_records': total_records,
+        'total_study_hours': total_hours,
+        'active_users': active_users,
+    })
