@@ -3,7 +3,7 @@
 > **개인 학습 통계 시각화 및 동기부여를 위한 소셜 러닝 웹 서비스**  
 > Django의 MTV 패턴 기반 풀스택 아키텍처로 개발되었으며, 대용량 데이터 조회 시의 쿼리 최적화(N+1 문제 해결)와 엄격한 인가(Authorization) 보안 설계를 적용한 프로젝트입니다.
 
----
+---**Live Demo**: [https://studyhub-9r50.onrender.com](https://studyhub-9r50.onrender.com)
 
 ## 📌 1. 프로젝트 개요 (Overview)
 
