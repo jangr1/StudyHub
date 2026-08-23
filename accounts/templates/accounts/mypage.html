@@ -1,0 +1,157 @@
+<!-- accounts/templates/accounts/mypage.html -->
+{% extends 'base.html' %}
+
+{% block title %}마이페이지 - StudyHub{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 좌측 프로필 및 기록 입력창 -->
+    <div class="col-md-4 mb-4">
+        <!-- 프로필 카드 -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-dark text-white fw-bold">내 프로필</div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_profile">
+                    {{ profile_form.as_p }}
+                    <button type="submit" class="btn btn-dark btn-sm w-100">프로필 저장</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 공부 기록 추가 카드 -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white fw-bold">✏️ 오늘 공부 기록</div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_record">
+                    {{ record_form.as_p }}
+                    <button type="submit" class="btn btn-primary btn-sm w-100">기록 추가</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 우측 통계 차트 및 기록 목록 -->
+    <div class="col-md-8">
+        <!-- 📈 통계 시각화 섹션 -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light fw-bold">📊 학습 통계 분석</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3 mb-md-0 text-center">
+                        <h6 class="text-secondary small fw-bold mb-2">최근 7일 일별 시간 (분)</h6>
+                        <canvas id="dailyChart" height="200"></canvas>
+                    </div>
+                    <div class="col-md-6 text-center">
+                        <h6 class="text-secondary small fw-bold mb-2">과목별 학습 비중</h6>
+                        <canvas id="subjectChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 📋 최근 기록 리스트 -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-light fw-bold d-flex justify-content-between align-items-center">
+                <span>📚 내 공부 일지</span>
+                <span class="badge bg-secondary">총 {{ records.count }}개</span>
+            </div>
+            <div class="card-body">
+                {% if records %}
+                    <div class="list-group list-group-flush">
+                        {% for record in records %}
+                            <div class="list-group-item px-0">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span class="badge bg-primary me-1">{{ record.subject }}</span>
+                                        <span class="badge bg-info text-dark">{{ record.duration_minutes }}분</span>
+                                        {% if record.is_public %}
+                                            <span class="badge bg-success">공개</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">비공개</span>
+                                        {% endif %}
+                                        <p class="mt-2 mb-1 text-secondary small">{{ record.memo|default:"(메모 없음)" }}</p>
+                                        <small class="text-muted" style="font-size: 0.75rem;">{{ record.created_at|date:"Y-m-d H:i" }}</small>
+                                    </div>
+                                    <div class="d-flex gap-1">
+                                        <a href="{% url 'accounts:edit_record' record.id %}" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size: 0.8rem;">수정</a>
+                                        <form method="post" action="{% url 'accounts:delete_record' record.id %}" onsubmit="return confirm('정말 삭제하시겠습니까?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2" style="font-size: 0.8rem;">삭제</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4 text-muted">
+                        아직 기록된 공부 내역이 없습니다.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js 라이브러리 및 렌더링 스크립트 -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // 1. 최근 7일 일별 막대 차트
+    const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+    new Chart(dailyCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ daily_labels_json|safe }},
+            datasets: [{
+                label: '공부 시간(분)',
+                data: {{ daily_times_json|safe }},
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    // 2. 과목별 비중 도넛 차트
+    const subjectCtx = document.getElementById('subjectChart').getContext('2d');
+    const subjectData = {{ subject_times_json|safe }};
+    
+    if (subjectData.length > 0) {
+        new Chart(subjectCtx, {
+            type: 'doughnut',
+            data: {
+                labels: {{ subject_labels_json|safe }},
+                datasets: [{
+                    data: subjectData,
+                    backgroundColor: [
+                        '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 12 } }
+                }
+            }
+        });
+    } else {
+        subjectCtx.font = "14px Arial";
+        subjectCtx.fillStyle = "#888";
+        subjectCtx.textAlign = "center";
+        subjectCtx.fillText("과목 데이터가 없습니다.", 150, 100);
+    }
+</script>
+{% endblock %}

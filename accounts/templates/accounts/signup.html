@@ -1,0 +1,37 @@
+<!-- accounts/templates/accounts/signup.html -->
+{% extends 'base.html' %}
+
+{% block title %}회원가입 - StudyHub{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white font-weight-bold">
+                ✨ 회원가입
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {% for field in form %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.help_text %}
+                                <div class="form-text text-muted" style="font-size: 0.75rem;">{{ field.help_text }}</div>
+                            {% endif %}
+                            {% for error in field.errors %}
+                                <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-primary w-100 mt-2">가입하기</button>
+                </form>
+                <div class="text-center mt-3 small">
+                    이미 계정이 있으신가요? <a href="{% url 'accounts:login' %}">로그인</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
